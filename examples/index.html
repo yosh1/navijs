@@ -3,9 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>navijs demo</title>
+    <title>navijs — Live demo</title>
     <style>
       :root { color-scheme: light dark; }
+      * { box-sizing: border-box; }
       body {
         font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
         margin: 0;
@@ -14,14 +15,25 @@
       }
       header {
         padding: 28px 40px;
-        background: #fff;
-        border-bottom: 1px solid #e5e7eb;
+        background: linear-gradient(135deg, #6366f1 0%, #5b8cff 100%);
+        color: white;
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         gap: 16px;
       }
-      header h1 { margin: 0; font-size: 20px; }
-      .container { max-width: 960px; margin: 40px auto; padding: 0 24px; }
+      header h1 { margin: 0; font-size: 22px; font-weight: 700; }
+      header .tagline {
+        opacity: 0.9;
+        font-size: 13px;
+        margin-left: auto;
+      }
+      header a {
+        color: white;
+        text-decoration: underline;
+        margin-left: 12px;
+      }
+      .container { max-width: 960px; margin: 32px auto; padding: 0 24px; }
       .card {
         background: #fff;
         border-radius: 12px;
@@ -29,7 +41,8 @@
         margin-bottom: 16px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.06);
       }
-      .row { display: flex; gap: 12px; margin-top: 16px; }
+      .card h2 { margin: 0 0 8px; font-size: 17px; }
+      .row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; align-items: center; }
       button {
         font: inherit;
         padding: 10px 18px;
@@ -38,10 +51,17 @@
         cursor: pointer;
         background: #5b8cff;
         color: white;
+        transition: filter 120ms ease;
       }
+      button:hover { filter: brightness(1.05); }
       button.secondary { background: #e5e7eb; color: #1f2937; }
-      .invoice-btn { background: #10b981; }
-      .reset-btn { background: transparent; color: #5b8cff; border: 1px solid #5b8cff; }
+      button.danger { background: #ef4444; }
+      button.invoice-btn { background: #10b981; }
+      button.outline {
+        background: transparent;
+        border: 1px solid currentColor;
+        color: white;
+      }
       input[type="text"] {
         font: inherit;
         padding: 10px 12px;
@@ -49,16 +69,78 @@
         border: 1px solid #d1d5db;
         width: 280px;
       }
+      .theme-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 8px;
+      }
+      .theme-pick {
+        position: relative;
+        padding: 14px;
+        border-radius: 10px;
+        cursor: pointer;
+        border: 2px solid transparent;
+        text-align: left;
+        font-weight: 600;
+        background: #f9fafb;
+        color: #1f2937;
+      }
+      .theme-pick.active { border-color: #5b8cff; }
+      .theme-pick .swatch {
+        height: 28px;
+        margin-bottom: 8px;
+        border-radius: 6px;
+        display: flex;
+      }
+      .theme-pick .swatch span { flex: 1; }
+      .theme-pick small {
+        display: block;
+        font-weight: 400;
+        opacity: 0.7;
+        margin-top: 2px;
+        font-size: 12px;
+      }
+      .progress {
+        font-size: 13px;
+        color: #6b7280;
+        margin-left: auto;
+      }
+      details {
+        background: #f9fafb;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-top: 12px;
+      }
+      summary { cursor: pointer; font-weight: 600; }
+      pre {
+        background: #0f172a;
+        color: #e5e7eb;
+        padding: 12px;
+        border-radius: 8px;
+        overflow-x: auto;
+        font-size: 12px;
+      }
     </style>
   </head>
   <body>
     <header>
-      <h1>📍 navijs demo</h1>
-      <button id="start" class="invoice-btn">ガイドを開始</button>
-      <button id="reset" class="reset-btn">進捗リセット</button>
+      <h1>📍 navijs</h1>
+      <button id="start" class="invoice-btn" data-testid="start-tour">ガイドを開始</button>
+      <button id="reset" class="outline">進捗リセット</button>
+      <span class="tagline">
+        Smart Locator + 4 themes + a11y, in <strong>8.3 KB gzipped</strong>
+        <a href="https://github.com/yosh1/navijs">GitHub</a>
+        <a href="https://www.npmjs.com/package/@yoshihisak/navijs">npm</a>
+      </span>
     </header>
 
     <main class="container">
+      <section class="card">
+        <h2>Theme</h2>
+        <p>4 つのプリセットを切り替えてみてください。「ガイドを開始」を押すと選択中のテーマで描画されます。</p>
+        <div class="theme-grid" id="theme-picker"></div>
+      </section>
+
       <section class="card">
         <h2>1. 検索</h2>
         <p>このフィールドにキーワードを入力します。</p>
@@ -76,6 +158,7 @@
         <div class="row">
           <button data-testid="create-invoice">請求書を作成</button>
           <button class="secondary">キャンセル</button>
+          <button class="danger" data-testid="danger">削除</button>
         </div>
       </section>
 
@@ -84,47 +167,128 @@
         <p>困ったら右下のヘルプから。</p>
         <button id="help-btn" aria-label="open-help">？ ヘルプ</button>
       </section>
+
+      <section class="card">
+        <h2>このデモのソース</h2>
+        <details>
+          <summary>クリックして展開</summary>
+          <pre id="src-block"></pre>
+        </details>
+      </section>
     </main>
 
     <script type="module">
-      import { createGuide, locator } from "../src/index.ts";
+      import { createGuide, locator, themes } from "../src/index.ts";
 
-      const tour = createGuide({
-        id: "demo-tour-1",
-        events: {
-          start: () => console.log("[demo] start"),
-          stepChange: (e) => console.log("[demo] step", e),
-          complete: () => console.log("[demo] complete"),
-          close: () => console.log("[demo] close"),
-          targetNotFound: (e) => console.warn("[demo] not found", e),
-        },
-      });
+      const themeOrder = [
+        { key: "light",   label: "Light (default)", description: "白背景に青アクセント" },
+        { key: "dark",    label: "Dark",            description: "黒背景に白文字" },
+        { key: "glass",   label: "Glass",           description: "半透明 + 紫アクセント" },
+        { key: "minimal", label: "Minimal",         description: "モノクロ、薄いオーバーレイ" },
+      ];
 
-      tour
-        .addStep({
-          target: locator().byTestId("search-input"),
-          title: "検索フィールド",
-          body: "ここにキーワードを入力すると、リストが絞り込まれます。",
-          placement: "bottom",
-        })
-        .addStep({
-          target: locator().byText("請求書を作成").byRole("button"),
-          title: "請求書を作る",
-          body: "ボタンをクリックすると新規請求書フォームが開きます。",
-          placement: "top",
-        })
-        .addStep({
-          target: locator().byAriaLabel("open-help"),
-          title: "ヘルプ",
-          body: "ここから困ったときのドキュメントを開けます。",
-          placement: "left",
+      let activeTheme = "light";
+
+      // --- Theme picker UI ----------------------------------------------------
+      const picker = document.getElementById("theme-picker");
+      for (const t of themeOrder) {
+        const node = document.createElement("button");
+        node.type = "button";
+        node.className = "theme-pick" + (t.key === activeTheme ? " active" : "");
+        node.dataset.theme = t.key;
+        const theme = themes[t.key];
+        node.innerHTML = `
+          <div class="swatch">
+            <span style="background:${theme.bg}"></span>
+            <span style="background:${theme.accent}"></span>
+            <span style="background:${theme.fg}"></span>
+          </div>
+          <span>${t.label}</span>
+          <small>${t.description}</small>
+        `;
+        node.addEventListener("click", () => {
+          activeTheme = t.key;
+          for (const el of picker.children) el.classList.toggle("active", el === node);
+          // Recreate guide so the new theme is applied on next start.
+          buildTour();
         });
+        picker.appendChild(node);
+      }
+
+      // --- Tour definition (rebuildable on theme change) ----------------------
+      let tour;
+
+      function buildTour() {
+        tour?.close();
+        tour = createGuide({
+          id: "demo-tour-1",
+          theme: themes[activeTheme],
+          events: {
+            start: () => console.log("[demo] start"),
+            stepChange: (e) => console.log("[demo] step", e),
+            complete: () => console.log("[demo] complete"),
+            close: () => console.log("[demo] close"),
+            targetNotFound: (e) => console.warn("[demo] not found", e),
+          },
+        });
+
+        tour
+          .addStep({
+            target: locator().byTestId("search-input"),
+            title: "検索フィールド",
+            body: "ここにキーワードを入力すると、リストが絞り込まれます。",
+            placement: "bottom",
+          })
+          .addStep({
+            target: locator().byText("請求書を作成").byRole("button"),
+            title: "請求書を作る",
+            body: "ボタンをクリックすると新規請求書フォームが開きます。",
+            placement: "top",
+          })
+          .addStep({
+            target: locator().byTestId("danger"),
+            title: "削除アクション",
+            body: "Smart Locator は role/text/testid を AND で重ねて、誤爆を防ぎます。",
+            placement: "top",
+          })
+          .addStep({
+            target: locator().byAriaLabel("open-help"),
+            title: "ヘルプ",
+            body: "ここから困ったときのドキュメントを開けます。",
+            placement: "left",
+          });
+      }
+
+      buildTour();
 
       document.getElementById("start").addEventListener("click", () => tour.start());
       document.getElementById("reset").addEventListener("click", () => {
         tour.reset();
         location.reload();
       });
+
+      // --- Source viewer ------------------------------------------------------
+      document.getElementById("src-block").textContent = `import { createGuide, locator, themes } from "@yoshihisak/navijs";
+
+const tour = createGuide({
+  id: "demo",
+  theme: themes.${activeTheme}, // ← 今選択中のプリセット
+});
+
+tour
+  .addStep({
+    target: locator().byTestId("search-input"),
+    title: "検索フィールド",
+    body: "ここにキーワードを入力。",
+    placement: "bottom",
+  })
+  .addStep({
+    target: locator().byText("請求書を作成").byRole("button"),
+    title: "請求書を作る",
+    body: "クリックで新規作成フォームが開きます。",
+  });
+
+tour.start();`;
     </script>
   </body>
 </html>

@@ -24,6 +24,8 @@ export interface Locator {
   fallback(other: Locator): Locator;
   timeout(ms: number): Locator;
   includeHidden(): Locator;
+  /** Disable shadow DOM piercing for this chain. Default: piercing is on. */
+  skipShadow(): Locator;
 
   resolve(root?: ParentNode): HTMLElement | null;
   resolveAll(root?: ParentNode): HTMLElement[];

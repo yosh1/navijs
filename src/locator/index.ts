@@ -12,6 +12,7 @@ interface ChainState {
   fallback?: LocatorImpl;
   timeoutMs: number;
   includeHidden: boolean;
+  pierceShadow: boolean;
 }
 
 class LocatorImpl implements Locator {
@@ -23,6 +24,7 @@ class LocatorImpl implements Locator {
       fallback: state?.fallback,
       timeoutMs: state?.timeoutMs ?? 5000,
       includeHidden: state?.includeHidden ?? false,
+      pierceShadow: state?.pierceShadow ?? true,
     };
   }
 
@@ -56,6 +58,9 @@ class LocatorImpl implements Locator {
   }
   includeHidden(): Locator {
     return new LocatorImpl({ ...this.state, includeHidden: true });
+  }
+  skipShadow(): Locator {
+    return new LocatorImpl({ ...this.state, pierceShadow: false });
   }
 
   resolve(root?: ParentNode): HTMLElement | null {
@@ -124,12 +129,12 @@ class LocatorImpl implements Locator {
   }
 
   private evaluateChain(root: ParentNode): HTMLElement[] {
-    const { strategies, includeHidden } = this.state;
+    const { strategies, includeHidden, pierceShadow } = this.state;
     if (strategies.length === 0) return [];
 
     let candidates: HTMLElement[] | null = null;
     for (const strategy of strategies) {
-      const matched = runStrategy(strategy, root);
+      const matched = runStrategy(strategy, root, pierceShadow);
       candidates = candidates === null
         ? matched
         : intersect(candidates, matched);

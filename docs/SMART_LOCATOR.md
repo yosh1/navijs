@@ -68,6 +68,26 @@ return rank(candidates)[0]
 - `display:none` / `visibility:hidden` / 0×0 は **候補から除外**（明示的に `.includeHidden()` で許可可能）。
 - ガイド対象は基本的に「ユーザに見えている要素」だから既定で除外。
 
+## Shadow DOM
+
+Smart Locator は **デフォルトで open shadow root を貫通** する。Web Component を多用したアプリ（Lit / Stencil / Salesforce LWC など）でも、外側からの `data-testid` や aria 属性、可視テキストで普通にターゲットできる。
+
+```ts
+// 通常の light DOM と同じ書き方でシャドウ内の要素も拾える
+locator().byTestId("inside-my-component");
+locator().byText("Save").byRole("button"); // ネストしたシャドウも再帰的に貫通
+```
+
+closed shadow root (`attachShadow({ mode: "closed" })`) は仕様上外から不可視なので除外される。
+
+パフォーマンスを優先したい / shadow を意図的に無視したい場合は `.skipShadow()`:
+
+```ts
+locator().bySelector(".btn-primary").skipShadow();
+```
+
+XPath だけは shadow を貫通できない（`document.evaluate` の仕様上の制約）。テキスト・role・testid・selector の方がシャドウと相性が良い。
+
 ## エラーメッセージ
 
 ターゲット未解決時のメッセージは debug に役立つよう詳細化:
@@ -87,5 +107,4 @@ return rank(candidates)[0]
 - `near(otherLocator, { within: 200 })` … 近接要素絞り込み（座標ベース）。
 - `nthOf(n)` … 複数候補時の明示的インデックス。
 - `inFrame(selector)` … same-origin iframe 内部解決。
-- `inShadow(host)` … Shadow DOM piercing。
 - `byVisualHash(...)` … 画像ベースのフォールバック（SaaS編集画面で記録）。

@@ -100,6 +100,7 @@ type Locator = {
   fallback(other: Locator): Locator;
   timeout(ms: number): Locator;
   includeHidden(): Locator;
+  skipShadow(): Locator;          // 既定: open shadow root を貫通する
 
   resolve(root?: ParentNode): HTMLElement | null;
   resolveAll(root?: ParentNode): HTMLElement[];

@@ -1,5 +1,11 @@
 # navijs
 
+[![npm](https://img.shields.io/npm/v/@yoshihisak/navijs.svg)](https://www.npmjs.com/package/@yoshihisak/navijs)
+[![CI](https://github.com/yosh1/navijs/actions/workflows/ci.yml/badge.svg)](https://github.com/yosh1/navijs/actions/workflows/ci.yml)
+[![bundle size](https://img.shields.io/badge/gzip-8.3%20KB-brightgreen)](#compared-to-other-tour-libraries)
+[![types](https://img.shields.io/badge/types-included-blue)](./docs/API.md)
+[![license](https://img.shields.io/badge/license-MIT-brightgreen.svg)](./LICENSE)
+
 > Framework-agnostic, type-safe in-app tour & onboarding library — with a **Smart Locator** that doesn't break when your DOM does.
 
 **[▶ Live demo](https://yosh1.github.io/navijs/)** · [npm](https://www.npmjs.com/package/@yoshihisak/navijs) · [docs](./docs/API.md)
@@ -13,7 +19,9 @@ npm install @yoshihisak/navijs
 - ✅ Works with React / Vue / Angular / vanilla — anything that renders DOM
 - ✅ Smart Locator combines text / role / aria / testid / selector / xpath as **AND constraints**
 - ✅ Cross-page resume via localStorage
-- ✅ Spotlight + tooltip out of the box, themeable via CSS variables
+- ✅ Spotlight + tooltip out of the box, 4 built-in theme presets
+- ✅ Shadow DOM piercing — works inside Lit / Stencil / web component apps
+- ✅ a11y: focus trap, aria-live announcements, focus restore
 
 ---
 
@@ -185,8 +193,8 @@ npm run demo
 
 | Version | Plan |
 | --- | --- |
-| **v0.1** (current) | Core: createGuide / Smart Locator / spotlight + tooltip / localStorage resume / `navijs/react` hook / `Step.render` override / **CDN UMD build** |
-| v0.2 | Theme presets, a11y polish, Shadow DOM piercing |
+| **v0.1** (current) | Core: createGuide / Smart Locator / spotlight + tooltip / localStorage resume / `navijs/react` hook / `Step.render` override / CDN UMD build / **theme presets** / **a11y polish** / **Shadow DOM piercing** |
+| v0.2 | iframe traversal, near() / nthOf() locator extensions |
 | v0.3 | Dedicated `@navijs/react` package (JSX-as-step API) |
 | v0.4 | `@navijs/vue` |
 | v1.0 | No-code editor + AI tour generator (SaaS) |

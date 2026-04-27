@@ -29,16 +29,41 @@ const INTERACTIVE_TAGS = new Set([
 /**
  * Run a single strategy against a root and return a list of HTMLElement candidates.
  * Visibility filtering happens later, in the Locator.
+ *
+ * `pierceShadow` controls whether queries descend into open shadow roots.
+ * Closed shadow roots are unobservable from outside and skipped regardless.
  */
-export function runStrategy(strategy: Strategy, root: ParentNode): HTMLElement[] {
+export function runStrategy(
+  strategy: Strategy,
+  root: ParentNode,
+  pierceShadow = true,
+): HTMLElement[] {
   switch (strategy.kind) {
-    case "text":     return matchByText(root, strategy.value, strategy.options.exact ?? false);
-    case "role":     return matchByRole(root, strategy.value, strategy.options.name);
-    case "ariaLabel":return matchByAriaLabel(root, strategy.value);
-    case "testId":   return matchByTestId(root, strategy.value);
-    case "selector": return matchBySelector(root, strategy.value);
-    case "xpath":    return matchByXPath(root, strategy.value);
+    case "text":     return matchByText(root, strategy.value, strategy.options.exact ?? false, pierceShadow);
+    case "role":     return matchByRole(root, strategy.value, strategy.options.name, pierceShadow);
+    case "ariaLabel":return matchByAriaLabel(root, strategy.value, pierceShadow);
+    case "testId":   return matchByTestId(root, strategy.value, pierceShadow);
+    case "selector": return matchBySelector(root, strategy.value, pierceShadow);
+    case "xpath":    return matchByXPath(root, strategy.value); // XPath cannot pierce shadow boundaries
   }
+}
+
+/**
+ * querySelectorAll that descends into open shadow roots.
+ * O(n) over the live element tree plus each shadow tree.
+ */
+function deepQueryAll<T extends Element>(root: ParentNode, selector: string): T[] {
+  const out: T[] = [];
+  for (const el of Array.from(root.querySelectorAll<T>(selector))) out.push(el);
+
+  // Walk every element once and recurse into shadow roots we find.
+  const all = root.querySelectorAll<Element>("*");
+  for (const el of Array.from(all)) {
+    if (el.shadowRoot) {
+      for (const m of deepQueryAll<T>(el.shadowRoot, selector)) out.push(m);
+    }
+  }
+  return out;
 }
 
 export function describeStrategy(s: Strategy): string {
@@ -58,24 +83,44 @@ function stringifyMatcher(v: string | RegExp): string {
 
 // ---- byText ---------------------------------------------------------------
 
-function matchByText(root: ParentNode, value: string | RegExp, exact: boolean): HTMLElement[] {
-  const ownerDoc = (root as Document).ownerDocument ?? (root as Document);
-  const treeRoot = (root as Element).nodeType === 9 /* Document */ ? (root as Document).body : (root as Node);
-  if (!treeRoot) return [];
-
+function matchByText(
+  root: ParentNode,
+  value: string | RegExp,
+  exact: boolean,
+  pierceShadow: boolean,
+): HTMLElement[] {
   const matches = new Set<HTMLElement>();
-  const walker = ownerDoc.createTreeWalker(treeRoot, NodeFilter.SHOW_TEXT, null);
+  walkText(root, pierceShadow, (text, el) => {
+    if (testText(text, value, exact)) matches.add(promoteToInteractive(el));
+  });
+  return Array.from(matches);
+}
+
+function walkText(
+  root: ParentNode,
+  pierceShadow: boolean,
+  visit: (trimmed: string, parent: HTMLElement) => void,
+): void {
+  const doc = (root as Node).ownerDocument ?? (root as Document);
+  const treeRoot = (root as Node).nodeType === 9 /* Document */
+    ? ((root as Document).body as Node)
+    : (root as Node);
+  if (!treeRoot) return;
+
+  const walker = doc.createTreeWalker(treeRoot, NodeFilter.SHOW_TEXT, null);
   let node = walker.nextNode();
   while (node) {
-    const text = node.nodeValue ?? "";
-    const trimmed = text.trim();
-    if (trimmed && testText(trimmed, value, exact)) {
-      const el = node.parentElement;
-      if (el) matches.add(promoteToInteractive(el));
-    }
+    const trimmed = (node.nodeValue ?? "").trim();
+    const el = node.parentElement;
+    if (trimmed && el) visit(trimmed, el);
     node = walker.nextNode();
   }
-  return Array.from(matches);
+  if (pierceShadow) {
+    const els = (treeRoot as ParentNode).querySelectorAll<Element>("*");
+    for (const e of Array.from(els)) {
+      if (e.shadowRoot) walkText(e.shadowRoot, true, visit);
+    }
+  }
 }
 
 function testText(haystack: string, value: string | RegExp, exact: boolean): boolean {
@@ -99,12 +144,16 @@ function promoteToInteractive(el: HTMLElement): HTMLElement {
 
 // ---- byRole ---------------------------------------------------------------
 
-function matchByRole(root: ParentNode, role: string, name: string | RegExp | undefined): HTMLElement[] {
-  const explicit = Array.from(root.querySelectorAll<HTMLElement>(`[role='${escapeAttr(role)}']`));
+function matchByRole(
+  root: ParentNode,
+  role: string,
+  name: string | RegExp | undefined,
+  pierceShadow: boolean,
+): HTMLElement[] {
+  const q = pierceShadow ? deepQueryAll : shallowQueryAll;
+  const explicit = q<HTMLElement>(root, `[role='${escapeAttr(role)}']`);
   const implicitSelector = IMPLICIT_ROLE_TO_SELECTOR[role];
-  const implicit = implicitSelector
-    ? Array.from(root.querySelectorAll<HTMLElement>(implicitSelector))
-    : [];
+  const implicit = implicitSelector ? q<HTMLElement>(root, implicitSelector) : [];
   const all = uniq([...explicit, ...implicit]);
   if (!name) return all;
   return all.filter((el) => {
@@ -148,8 +197,13 @@ function accessibleName(el: HTMLElement): string | null {
 
 // ---- byAriaLabel ----------------------------------------------------------
 
-function matchByAriaLabel(root: ParentNode, value: string | RegExp): HTMLElement[] {
-  const all = Array.from(root.querySelectorAll<HTMLElement>("[aria-label], [aria-labelledby]"));
+function matchByAriaLabel(
+  root: ParentNode,
+  value: string | RegExp,
+  pierceShadow: boolean,
+): HTMLElement[] {
+  const q = pierceShadow ? deepQueryAll : shallowQueryAll;
+  const all = q<HTMLElement>(root, "[aria-label], [aria-labelledby]");
   return all.filter((el) => {
     const direct = el.getAttribute("aria-label");
     if (direct && testText(direct, value, false)) return true;
@@ -167,19 +221,25 @@ function matchByAriaLabel(root: ParentNode, value: string | RegExp): HTMLElement
 
 // ---- byTestId -------------------------------------------------------------
 
-function matchByTestId(root: ParentNode, id: string): HTMLElement[] {
+function matchByTestId(root: ParentNode, id: string, pierceShadow: boolean): HTMLElement[] {
   const selectors = TEST_ID_ATTRS.map((a) => `[${a}='${escapeAttr(id)}']`).join(", ");
-  return Array.from(root.querySelectorAll<HTMLElement>(selectors));
+  const q = pierceShadow ? deepQueryAll : shallowQueryAll;
+  return q<HTMLElement>(root, selectors);
 }
 
 // ---- bySelector / byXPath -------------------------------------------------
 
-function matchBySelector(root: ParentNode, selector: string): HTMLElement[] {
+function matchBySelector(root: ParentNode, selector: string, pierceShadow: boolean): HTMLElement[] {
   try {
-    return Array.from(root.querySelectorAll<HTMLElement>(selector));
+    const q = pierceShadow ? deepQueryAll : shallowQueryAll;
+    return q<HTMLElement>(root, selector);
   } catch {
     return [];
   }
+}
+
+function shallowQueryAll<T extends Element>(root: ParentNode, selector: string): T[] {
+  return Array.from(root.querySelectorAll<T>(selector));
 }
 
 function matchByXPath(root: ParentNode, xpath: string): HTMLElement[] {

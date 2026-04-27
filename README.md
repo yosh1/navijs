@@ -66,7 +66,7 @@ tour.start();
 </script>
 ```
 
-The IIFE bundle is **22 KB minified / 7.6 KB gzipped**, fully self-contained (styles inject at runtime), and exposes `window.navijs`. Same `createGuide` / `locator` / events / Smart Locator as the npm build. Available on unpkg and jsDelivr.
+The IIFE bundle is **25 KB minified / 8.3 KB gzipped**, fully self-contained (styles inject at runtime), and exposes `window.navijs`. Same `createGuide` / `locator` / events / Smart Locator as the npm build. Available on unpkg and jsDelivr.
 
 ## React
 
@@ -122,7 +122,7 @@ Strategies on the same chain are evaluated as **AND** — every signal must agre
 
 | | navijs | intro.js | react-joyride | @reactour/tour | shepherd.js |
 | --- | --- | --- | --- | --- | --- |
-| Bundle (min / **gzip**) † | **22 KB / 7.6 KB** | 62 / 17 | 80 / 27 ‡ | 29 / 10 ‡ | 41 / 14 |
+| Bundle (min / **gzip**) † | **25 KB / 8.3 KB** | 62 / 17 | 80 / 27 ‡ | 29 / 10 ‡ | 41 / 14 |
 | License | **MIT** | AGPLv3 (paid commercial) | MIT | MIT | MIT |
 | Framework | any (React adapter built-in) | jQuery-era, ad-hoc React | React only | React only | any (jQuery-era) |
 | TypeScript | first-class | `@types/intro.js` | typed | typed | typed |

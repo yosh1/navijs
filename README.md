@@ -2,8 +2,10 @@
 
 > Framework-agnostic, type-safe in-app tour & onboarding library — with a **Smart Locator** that doesn't break when your DOM does.
 
+**[▶ Live demo](https://yosh1.github.io/navijs/)** · [npm](https://www.npmjs.com/package/@yoshihisak/navijs) · [docs](./docs/API.md)
+
 ```
-npm install navijs
+npm install @yoshihisak/navijs
 ```
 
 - ✅ Zero runtime dependencies
@@ -18,7 +20,7 @@ npm install navijs
 ## Quickstart
 
 ```ts
-import { createGuide, locator } from "navijs";
+import { createGuide, locator } from "@yoshihisak/navijs";
 
 const tour = createGuide({ id: "first-run" });
 
@@ -47,7 +49,7 @@ tour.start();
 ## CDN (no build step)
 
 ```html
-<script src="https://unpkg.com/navijs/dist/navijs.global.js"></script>
+<script src="https://unpkg.com/@yoshihisak/navijs/dist/navijs.global.js"></script>
 <script>
   const tour = navijs.createGuide({ id: "first-run" });
   tour
@@ -69,7 +71,7 @@ The IIFE bundle is **22 KB minified / 7.6 KB gzipped**, fully self-contained (st
 ## React
 
 ```tsx
-import { useGuide, locator } from "navijs/react";
+import { useGuide, locator } from "@yoshihisak/navijs/react";
 
 function App() {
   const tour = useGuide({

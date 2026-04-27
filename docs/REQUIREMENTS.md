@@ -168,7 +168,7 @@ locator()
 
 ### 5.1 初期化
 ```ts
-import { createGuide, locator } from "navijs";
+import { createGuide, locator } from "@yoshihisak/navijs";
 
 const guide = createGuide({
   id: "first-time-onboarding",

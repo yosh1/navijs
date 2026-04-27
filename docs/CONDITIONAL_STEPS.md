@@ -155,7 +155,7 @@ target: locator()
 ## 7. 組み合わせ例 — 実プロジェクト相当
 
 ```ts
-import { createGuide, locator } from "navijs";
+import { createGuide, locator } from "@yoshihisak/navijs";
 
 const tour = createGuide({ id: "onboarding-v3" });
 

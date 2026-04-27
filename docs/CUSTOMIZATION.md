@@ -136,11 +136,11 @@ type RenderContext = {
 
 ### `render` を React で使う
 
-`navijs/react` の `useGuide` から渡す `define` 内で `step.render` を書ける。
+`@yoshihisak/navijs/react` の `useGuide` から渡す `define` 内で `step.render` を書ける。
 React コンポーネントを描きたい場合は、stable な container DOM に `createPortal` する。
 
 ```tsx
-import { useGuide } from "navijs/react";
+import { useGuide } from "@yoshihisak/navijs/react";
 import { createPortal } from "react-dom";
 import { useRef } from "react";
 

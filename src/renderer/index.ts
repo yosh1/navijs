@@ -33,9 +33,26 @@ interface MountedState {
   overlay: HTMLDivElement;
   hole: SVGRectElement;
   tooltip: HTMLDivElement;
+  liveRegion: HTMLDivElement;
+  previousFocus: Element | null;
   scrollListeners: Array<() => void>;
   resizeObserver?: ResizeObserver;
   mutationObserver?: MutationObserver;
+}
+
+const FOCUSABLE_SELECTOR = [
+  "a[href]",
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "[tabindex]:not([tabindex='-1'])",
+].join(",");
+
+function focusable(root: HTMLElement): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (el) => !el.hasAttribute("inert"),
+  );
 }
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -61,7 +78,8 @@ export class Renderer {
   }
 
   mount(target: HTMLElement, step: ResolvedStep, callbacks: RendererCallbacks): void {
-    this.unmount();
+    const previousFocus = this.state?.previousFocus ?? document.activeElement;
+    this.unmount({ restoreFocus: false });
     ensureStyles(this.opts.theme, this.opts.zIndex);
 
     const root = document.createElement("div");
@@ -75,6 +93,9 @@ export class Renderer {
       ? wrapCustomRender(step, target, callbacks)
       : createTooltip(step, callbacks, this.opts.theme);
     root.appendChild(tooltip);
+
+    const liveRegion = createLiveRegion();
+    root.appendChild(liveRegion);
 
     this.resolveRoot().appendChild(root);
 
@@ -94,6 +115,8 @@ export class Renderer {
       overlay,
       hole,
       tooltip,
+      liveRegion,
+      previousFocus,
       scrollListeners: [],
     };
 
@@ -101,20 +124,54 @@ export class Renderer {
     this.position();
     this.attachListeners();
 
-    // a11y
+    // a11y wiring
     tooltip.setAttribute("role", "dialog");
     tooltip.setAttribute("aria-modal", "true");
     tooltip.tabIndex = -1;
-    queueMicrotask(() => tooltip.focus({ preventScroll: true }));
+
+    const titleEl = tooltip.querySelector<HTMLElement>(".navijs-title");
+    const bodyEl = tooltip.querySelector<HTMLElement>(".navijs-body");
+    if (titleEl) {
+      const titleId = `navijs-title-${step.index}`;
+      titleEl.id = titleId;
+      tooltip.setAttribute("aria-labelledby", titleId);
+    }
+    if (bodyEl) {
+      const bodyId = `navijs-body-${step.index}`;
+      bodyEl.id = bodyId;
+      tooltip.setAttribute("aria-describedby", bodyId);
+    }
+
+    // Announce the step to screen readers (next render frame so SR picks it up).
+    const announcement = [step.title, typeof step.body === "string" ? step.body : ""]
+      .filter(Boolean)
+      .join(". ");
+    if (announcement) {
+      requestAnimationFrame(() => {
+        liveRegion.textContent = `${step.index + 1} / ${step.total}: ${announcement}`;
+      });
+    }
+
+    // Focus the primary action if available; otherwise the tooltip itself.
+    queueMicrotask(() => {
+      const primary = tooltip.querySelector<HTMLElement>(".navijs-btn-primary");
+      (primary ?? tooltip).focus({ preventScroll: true });
+    });
   }
 
-  unmount(): void {
+  unmount(opts: { restoreFocus?: boolean } = { restoreFocus: true }): void {
     const s = this.state;
     if (!s) return;
     this.detachListeners();
     s.resizeObserver?.disconnect();
     s.mutationObserver?.disconnect();
     s.root.remove();
+
+    if (opts.restoreFocus !== false && s.previousFocus instanceof HTMLElement) {
+      // Avoid stealing focus mid-step-transition. Only restore on real close.
+      try { s.previousFocus.focus({ preventScroll: true }); } catch { /* ignore */ }
+    }
+
     this.state = null;
   }
 
@@ -154,12 +211,37 @@ export class Renderer {
     window.addEventListener("scroll", this.boundReposition, true);
     window.addEventListener("resize", this.boundReposition);
 
-    if (this.opts.closeOnEscape) {
-      this.boundOnKey = (e: KeyboardEvent) => {
-        if (e.key === "Escape") s.callbacks.onClose();
-      };
-      window.addEventListener("keydown", this.boundOnKey);
-    }
+    this.boundOnKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && this.opts.closeOnEscape) {
+        s.callbacks.onClose();
+        return;
+      }
+      if (e.key === "Tab") {
+        const items = focusable(s.tooltip);
+        if (items.length === 0) {
+          e.preventDefault();
+          s.tooltip.focus({ preventScroll: true });
+          return;
+        }
+        const first = items[0]!;
+        const last = items[items.length - 1]!;
+        const active = document.activeElement as HTMLElement | null;
+        // Loop within the tooltip — never let focus leak into page chrome
+        // while a modal tour is on screen.
+        if (e.shiftKey) {
+          if (active === first || active === s.tooltip) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (active === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
+    };
+    window.addEventListener("keydown", this.boundOnKey);
 
     if (typeof ResizeObserver !== "undefined") {
       s.resizeObserver = new ResizeObserver(() => this.position());
@@ -283,6 +365,17 @@ function createTooltip(
   actions.appendChild(buttons);
   tooltip.appendChild(actions);
   return tooltip;
+}
+
+function createLiveRegion(): HTMLDivElement {
+  const el = document.createElement("div");
+  el.className = "navijs-live";
+  el.setAttribute("aria-live", "polite");
+  el.setAttribute("aria-atomic", "true");
+  // Visually hidden but read by screen readers.
+  el.style.cssText =
+    "position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;";
+  return el;
 }
 
 function appendBody(host: HTMLElement, body: ResolvedStep["body"]): void {

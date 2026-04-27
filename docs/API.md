@@ -157,7 +157,7 @@ type GuideState = {
 ## 簡易例
 
 ```ts
-import { createGuide, locator } from "navijs";
+import { createGuide, locator } from "@yoshihisak/navijs";
 
 const tour = createGuide({ id: "first-tour" });
 

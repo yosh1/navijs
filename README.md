@@ -199,6 +199,10 @@ npm run demo
 | v0.4 | `@navijs/vue` |
 | v1.0 | No-code editor + AI tour generator (SaaS) |
 
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for local development, test conventions, and the release flow. Bug reports and PRs welcome.
+
 ## License
 
-MIT
+[MIT](./LICENSE)

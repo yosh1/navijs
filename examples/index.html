@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>navijs demo</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+        margin: 0;
+        background: #f4f6fb;
+        color: #1f2937;
+      }
+      header {
+        padding: 28px 40px;
+        background: #fff;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      header h1 { margin: 0; font-size: 20px; }
+      .container { max-width: 960px; margin: 40px auto; padding: 0 24px; }
+      .card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      }
+      .row { display: flex; gap: 12px; margin-top: 16px; }
+      button {
+        font: inherit;
+        padding: 10px 18px;
+        border-radius: 8px;
+        border: 0;
+        cursor: pointer;
+        background: #5b8cff;
+        color: white;
+      }
+      button.secondary { background: #e5e7eb; color: #1f2937; }
+      .invoice-btn { background: #10b981; }
+      .reset-btn { background: transparent; color: #5b8cff; border: 1px solid #5b8cff; }
+      input[type="text"] {
+        font: inherit;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        width: 280px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>📍 navijs demo</h1>
+      <button id="start" class="invoice-btn">ガイドを開始</button>
+      <button id="reset" class="reset-btn">進捗リセット</button>
+    </header>
+
+    <main class="container">
+      <section class="card">
+        <h2>1. 検索</h2>
+        <p>このフィールドにキーワードを入力します。</p>
+        <input
+          type="text"
+          aria-label="search-keyword"
+          data-testid="search-input"
+          placeholder="検索キーワード"
+        />
+      </section>
+
+      <section class="card">
+        <h2>2. アクション</h2>
+        <p>以下のボタンから新規作成できます。</p>
+        <div class="row">
+          <button data-testid="create-invoice">請求書を作成</button>
+          <button class="secondary">キャンセル</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>3. ヘルプ</h2>
+        <p>困ったら右下のヘルプから。</p>
+        <button id="help-btn" aria-label="open-help">？ ヘルプ</button>
+      </section>
+    </main>
+
+    <script type="module">
+      import { createGuide, locator } from "../src/index.ts";
+
+      const tour = createGuide({
+        id: "demo-tour-1",
+        events: {
+          start: () => console.log("[demo] start"),
+          stepChange: (e) => console.log("[demo] step", e),
+          complete: () => console.log("[demo] complete"),
+          close: () => console.log("[demo] close"),
+          targetNotFound: (e) => console.warn("[demo] not found", e),
+        },
+      });
+
+      tour
+        .addStep({
+          target: locator().byTestId("search-input"),
+          title: "検索フィールド",
+          body: "ここにキーワードを入力すると、リストが絞り込まれます。",
+          placement: "bottom",
+        })
+        .addStep({
+          target: locator().byText("請求書を作成").byRole("button"),
+          title: "請求書を作る",
+          body: "ボタンをクリックすると新規請求書フォームが開きます。",
+          placement: "top",
+        })
+        .addStep({
+          target: locator().byAriaLabel("open-help"),
+          title: "ヘルプ",
+          body: "ここから困ったときのドキュメントを開けます。",
+          placement: "left",
+        });
+
+      document.getElementById("start").addEventListener("click", () => tour.start());
+      document.getElementById("reset").addEventListener("click", () => {
+        tour.reset();
+        location.reload();
+      });
+    </script>
+  </body>
+</html>

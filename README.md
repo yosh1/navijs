@@ -44,6 +44,28 @@ tour.on("complete", () => console.log("done!"));
 tour.start();
 ```
 
+## CDN (no build step)
+
+```html
+<script src="https://unpkg.com/navijs/dist/navijs.global.js"></script>
+<script>
+  const tour = navijs.createGuide({ id: "first-run" });
+  tour
+    .addStep({
+      target: navijs.locator().byTestId("nav-home"),
+      title: "ホーム",
+      body: "ここからダッシュボードへ。",
+    })
+    .addStep({
+      target: navijs.locator().byRole("button", { name: /create/i }),
+      body: "新規作成はここから。",
+    });
+  tour.start();
+</script>
+```
+
+The IIFE bundle is **22 KB minified / 7.6 KB gzipped**, fully self-contained (styles inject at runtime), and exposes `window.navijs`. Same `createGuide` / `locator` / events / Smart Locator as the npm build. Available on unpkg and jsDelivr.
+
 ## React
 
 ```tsx
@@ -94,6 +116,25 @@ locator()
 
 Strategies on the same chain are evaluated as **AND** — every signal must agree. If the chain returns zero matches, the `fallback` chain is tried. See [docs/SMART_LOCATOR.md](./docs/SMART_LOCATOR.md).
 
+## Compared to other tour libraries
+
+| | navijs | intro.js | react-joyride | @reactour/tour | shepherd.js |
+| --- | --- | --- | --- | --- | --- |
+| Bundle (min / **gzip**) † | **22 KB / 7.6 KB** | 62 / 17 | 80 / 27 ‡ | 29 / 10 ‡ | 41 / 14 |
+| License | **MIT** | AGPLv3 (paid commercial) | MIT | MIT | MIT |
+| Framework | any (React adapter built-in) | jQuery-era, ad-hoc React | React only | React only | any (jQuery-era) |
+| TypeScript | first-class | `@types/intro.js` | typed | typed | typed |
+| Selector strategy | **multi-signal AND + fallback + timeout** | `data-intro` attrs on DOM | string class/id | string class/id | string class/id |
+| Wait for element | built-in (`MutationObserver`) | n/a | n/a | n/a | manual |
+| Cross-page resume | built-in (`localStorage`) | n/a | manual | manual | manual |
+| Custom render slot | `Step.render` (full chrome) | CSS only | render props | render props | template strings |
+| CDN `<script>` build | yes | yes | n/a | n/a | yes |
+
+† Measured 2026-04-27 with `esbuild --minify --format=iife --target=es2018`. React peers excluded for React-only libs.
+‡ Excludes react / react-dom (peer deps). navijs row is core only; the React adapter adds ~2 KB ESM unminified.
+
+navijs is the smallest of the bunch **and** the only one that doesn't make you decorate the DOM you're touring.
+
 ## Smart Locator vs XPath-only
 
 Most React tour libraries ask you to either decorate every target with an `id` / `data-testid`, or to copy an absolute XPath out of DevTools. Both options break the moment the DOM moves:
@@ -142,11 +183,10 @@ npm run demo
 
 | Version | Plan |
 | --- | --- |
-| **v0.1** (current) | Core: createGuide / Smart Locator / spotlight + tooltip / localStorage resume |
+| **v0.1** (current) | Core: createGuide / Smart Locator / spotlight + tooltip / localStorage resume / `navijs/react` hook / `Step.render` override / **CDN UMD build** |
 | v0.2 | Theme presets, a11y polish, Shadow DOM piercing |
-| v0.3 | `@navijs/react` |
+| v0.3 | Dedicated `@navijs/react` package (JSX-as-step API) |
 | v0.4 | `@navijs/vue` |
-| v0.5 | CDN UMD build |
 | v1.0 | No-code editor + AI tour generator (SaaS) |
 
 ## License

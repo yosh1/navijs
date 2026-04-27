@@ -7,11 +7,29 @@ export type StepBody =
   | HTMLElement
   | (() => string | HTMLElement);
 
+export interface RenderContext {
+  step: ResolvedStep;
+  target: HTMLElement;
+  next: () => void;
+  prev: () => void;
+  skip: () => void;
+  close: () => void;
+}
+
+export type StepRender = (ctx: RenderContext) => HTMLElement;
+
 export interface Step {
   id?: string;
   target: Locator | string;
   title?: string;
-  body: StepBody;
+  body?: StepBody;
+  /**
+   * Full tooltip override. If provided, the returned element replaces the
+   * built-in tooltip entirely — title / body / buttons / progress are no
+   * longer rendered, and you own the chrome. The spotlight overlay is still
+   * drawn.
+   */
+  render?: StepRender;
   placement?: Placement;
   url?: string | RegExp | ((loc: Location) => boolean);
   canRender?: () => boolean;

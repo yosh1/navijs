@@ -54,7 +54,9 @@ export class Guide {
 
   addStep(step: Step): this {
     if (!step.target) throw new NavijsError("INVALID_STEP", "step.target is required");
-    if (step.body == null) throw new NavijsError("INVALID_STEP", "step.body is required");
+    if (step.body == null && step.render == null) {
+      throw new NavijsError("INVALID_STEP", "step requires either `body` or `render`");
+    }
     this.steps.push(step);
     return this;
   }
@@ -68,6 +70,14 @@ export class Guide {
 
   isCompleted(): boolean {
     return this.state.completed;
+  }
+
+  isActive(): boolean {
+    return this.active;
+  }
+
+  getStepCount(): number {
+    return this.steps.length;
   }
 
   getCurrentStep(): Step | null {

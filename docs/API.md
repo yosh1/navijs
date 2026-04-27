@@ -29,7 +29,8 @@ type Step = {
   id?: string;
   target: Locator | string;            // string は CSS Selector の簡易記法
   title?: string;
-  body: string | HTMLElement | (() => string | HTMLElement);
+  body?: string | HTMLElement | (() => string | HTMLElement);
+  render?: (ctx: RenderContext) => HTMLElement;  // ツールチップ全体を差し替え
   placement?: "top" | "bottom" | "left" | "right" | "auto"; // 既定 auto
   url?: string | RegExp | ((loc: Location) => boolean);
   canRender?: () => boolean;
@@ -41,7 +42,19 @@ type Step = {
   prevLabel?: string;
   doneLabel?: string;
 };
+
+type RenderContext = {
+  step: ResolvedStep;          // index / total / title など
+  target: HTMLElement;          // ハイライト対象
+  next: () => void;
+  prev: () => void;
+  skip: () => void;
+  close: () => void;
+};
 ```
+
+`body` と `render` のどちらか（または両方）が必須。両方指定された場合は `render` が優先。
+レンダリングカスタマイズの詳細は [CUSTOMIZATION.md](./CUSTOMIZATION.md) を参照。
 
 ### `start(opts?: { from?: number | string }): Promise<void>`
 保存済み進捗があれば再開、なければ最初から。`from` で明示開始位置を指定可。

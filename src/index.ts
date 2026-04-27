@@ -12,10 +12,12 @@ export type {
   GuideStorage,
   NavijsTheme,
   Placement,
+  RenderContext,
   ResolvedStep,
   Step,
   StepBody,
   StepContext,
+  StepRender,
   StorageKind,
 } from "./types.js";
 

@@ -44,6 +44,39 @@ tour.on("complete", () => console.log("done!"));
 tour.start();
 ```
 
+## React
+
+```tsx
+import { useGuide, locator } from "navijs/react";
+
+function App() {
+  const tour = useGuide({
+    id: "first-run",
+    define: (g) => {
+      g.addStep({
+        target: locator().byTestId("nav-home"),
+        title: "ホーム",
+        body: "ここからダッシュボードへ。",
+      });
+      g.addStep({
+        target: locator().byRole("button", { name: /create/i }),
+        body: "新規作成はここから。",
+      });
+    },
+  });
+
+  return (
+    <button onClick={() => tour.start()} disabled={tour.isActive}>
+      Start tour ({tour.currentStep + 1} / {tour.totalSteps || "?"})
+    </button>
+  );
+}
+```
+
+`useGuide` は `start / next / prev / close / reset` のコールバックと、
+`isActive / currentStep / totalSteps / isCompleted` の reactive state を返す。
+ガイドインスタンスは `id` が変わらない限り再生成されないので、進捗が保持される。
+
 ## Why Smart Locator
 
 CSS selectors break when class names get hashed. XPath breaks when JSX inserts a `<Fragment>` somewhere. `data-testid` may be tree-shaken in production. **navijs** lets you stack multiple signals:
@@ -61,11 +94,41 @@ locator()
 
 Strategies on the same chain are evaluated as **AND** — every signal must agree. If the chain returns zero matches, the `fallback` chain is tried. See [docs/SMART_LOCATOR.md](./docs/SMART_LOCATOR.md).
 
+## Smart Locator vs XPath-only
+
+Most React tour libraries ask you to either decorate every target with an `id` / `data-testid`, or to copy an absolute XPath out of DevTools. Both options break the moment the DOM moves:
+
+| Concern | XPath only (e.g. `//div[2]/section/button[1]`) | Smart Locator |
+| --- | --- | --- |
+| Class names hashed by CSS Modules / Tailwind JIT | depends — XPath dodges class names | works (uses role / text / testid) |
+| `<Fragment>` inserted/removed during render | **breaks** — sibling indices shift | survives — text + role still match |
+| A11y refactor renames a `<div role="button">` to `<button>` | **breaks** | survives — role normalizes both |
+| `data-testid` stripped in production | n/a | falls through to text + role |
+| Target hasn't mounted yet (async route, lazy data) | needs custom polling | `.timeout(ms)` built-in via `MutationObserver` |
+| Target legitimately moved to a new component | **breaks silently** | `.fallback()` chain catches it |
+| Two matches on the page (e.g. duplicated CTA in header + body) | first match wins blindly | ranked by visibility → viewport → DOM depth |
+
+The point isn't that XPath is bad — it's that **a single signal is fragile by definition**. Smart Locator lets you stack as many signals as you want, evaluated as `AND`, so any one of them breaking still leaves the lookup pinned by the others. One signal works too; you only add more when stability matters.
+
+```ts
+// Brittle: one signal, no fallback, no wait.
+target: "xpath=/html/body/div[2]/main/section[3]/button[1]"
+
+// Resilient: three signals + fallback + timeout.
+target: locator()
+  .byRole("button", { name: /create invoice/i })
+  .byTestId("create-invoice")
+  .fallback(locator().bySelector("#legacy-create"))
+  .timeout(8000)
+```
+
 ## Docs
 
 - [REQUIREMENTS](./docs/REQUIREMENTS.md) — full requirements
 - [ARCHITECTURE](./docs/ARCHITECTURE.md) — module layout & sequencing
 - [SMART_LOCATOR](./docs/SMART_LOCATOR.md) — locator algorithm
+- [CUSTOMIZATION](./docs/CUSTOMIZATION.md) — theming, custom body, full `render` override
+- [CONDITIONAL_STEPS](./docs/CONDITIONAL_STEPS.md) — wait-for / skip / branch patterns
 - [API](./docs/API.md) — full API reference
 
 ## Run the demo

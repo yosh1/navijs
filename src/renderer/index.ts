@@ -71,7 +71,9 @@ export class Renderer {
     const { overlay, hole } = createOverlay(this.opts);
     root.appendChild(overlay);
 
-    const tooltip = createTooltip(step, callbacks, this.opts.theme);
+    const tooltip = step.render
+      ? wrapCustomRender(step, target, callbacks)
+      : createTooltip(step, callbacks, this.opts.theme);
     root.appendChild(tooltip);
 
     this.resolveRoot().appendChild(root);
@@ -284,12 +286,35 @@ function createTooltip(
 }
 
 function appendBody(host: HTMLElement, body: ResolvedStep["body"]): void {
+  if (body == null) return;
   const value = typeof body === "function" ? body() : body;
   if (typeof value === "string") {
     host.textContent = value; // textContent: XSS-safe
   } else if (value instanceof HTMLElement) {
     host.appendChild(value);
   }
+}
+
+function wrapCustomRender(
+  step: ResolvedStep,
+  target: HTMLElement,
+  cb: RendererCallbacks,
+): HTMLDivElement {
+  // Caller owns chrome; we just position it and keep the tooltip class for
+  // placement math. Users who want to break out of placement entirely can
+  // set position via CSS on their returned root.
+  const wrapper = document.createElement("div");
+  wrapper.className = "navijs-tooltip navijs-tooltip-custom";
+  const rendered = step.render!({
+    step,
+    target,
+    next: cb.onNext,
+    prev: cb.onPrev,
+    skip: cb.onSkip,
+    close: cb.onClose,
+  });
+  wrapper.appendChild(rendered);
+  return wrapper;
 }
 
 function button(className: string, label: string, onClick: () => void): HTMLButtonElement {

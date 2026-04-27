@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0] — 2026-04-27
+## [0.2.0] — 2026-04-27
 
-Initial public release.
+First fully-featured release. Adds Shadow DOM piercing, four built-in theme presets, full a11y polish (focus trap / live region / focus restore), `Step.render` for tooltip override, and the `useGuide` React hook.
 
 ### Added
 
@@ -73,5 +73,10 @@ Initial public release.
 - `docs/ARCHITECTURE.md`, `docs/REQUIREMENTS.md`.
 - Live demo with interactive theme switcher: <https://yosh1.github.io/navijs/>.
 
-[Unreleased]: https://github.com/yosh1/navijs/compare/v0.1.0...HEAD
+## [0.1.0] — 2026-04-27
+
+Initial preview publish. Core Guide controller + Smart Locator (without Shadow DOM piercing), spotlight + tooltip renderer, React adapter, IIFE / CDN build. Superseded by 0.2.0 the same day.
+
+[Unreleased]: https://github.com/yosh1/navijs/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/yosh1/navijs/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/yosh1/navijs/releases/tag/v0.1.0

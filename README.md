@@ -30,7 +30,14 @@ npm install @yoshihisak/navijs
 ```ts
 import { createGuide, locator } from "@yoshihisak/navijs";
 
-const tour = createGuide({ id: "first-run" });
+const tour = createGuide({
+  id: "first-run",
+  // CSP が厳しい環境では nonce を渡すか、injectStyles:false + 自前CSSにする
+  // styleNonce: "...",
+  // injectStyles: false,
+  // 調査用: locator解決時間などを console.debug に出す
+  // debug: true, // or "verbose"
+});
 
 tour
   .addStep({

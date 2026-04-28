@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import * as React from "react";
 import { createGuide, type Guide } from "./guide.js";
 import type { CreateGuideOptions } from "./types.js";
 
@@ -47,27 +47,22 @@ const INITIAL: ReactiveState = {
 };
 
 export function useGuide(options: UseGuideOptions): UseGuideReturn {
-  const defineRef = useRef(options.define);
+  const defineRef = React.useRef(options.define);
   defineRef.current = options.define;
 
-  const [guide, setGuide] = useState<Guide | null>(null);
-  const [state, setState] = useState<ReactiveState>(INITIAL);
+  const [guide, setGuide] = React.useState<Guide | null>(null);
+  const [state, setState] = React.useState<ReactiveState>(INITIAL);
 
   const { id, autoStart } = options;
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (typeof window === "undefined") return;
 
     const g = createGuide(options);
     defineRef.current(g);
 
     setGuide(g);
-    setState({
-      isActive: g.isActive(),
-      isCompleted: g.isCompleted(),
-      currentStep: 0,
-      totalSteps: g.getStepCount(),
-    });
+    setState(g.getSnapshot());
 
     const offStart = g.on("start", (ctx) =>
       setState((s) => ({
@@ -104,15 +99,40 @@ export function useGuide(options: UseGuideOptions): UseGuideReturn {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const start = useCallback(
+  // Prefer React 18+ external store sync when available.
+  const useSyncExternalStore = (React as any).useSyncExternalStore as
+    | undefined
+    | ((subscribe: (onStoreChange: () => void) => () => void, getSnapshot: () => ReactiveState) => ReactiveState);
+
+  const syncedState = useSyncExternalStore && guide
+    ? useSyncExternalStore(
+      (onStoreChange) => {
+        const offStart = guide.on("start", onStoreChange);
+        const offStep = guide.on("stepChange", onStoreChange);
+        const offComplete = guide.on("complete", onStoreChange);
+        const offClose = guide.on("close", onStoreChange);
+        const offNotFound = guide.on("targetNotFound", onStoreChange);
+        return () => {
+          offStart();
+          offStep();
+          offComplete();
+          offClose();
+          offNotFound();
+        };
+      },
+      () => guide.getSnapshot(),
+    )
+    : state;
+
+  const start = React.useCallback(
     (o?: { from?: number | string }) => guide?.start(o) ?? Promise.resolve(),
     [guide],
   );
-  const next = useCallback(() => guide?.next() ?? Promise.resolve(), [guide]);
-  const prev = useCallback(() => guide?.prev() ?? Promise.resolve(), [guide]);
-  const skip = useCallback(() => guide?.skip() ?? Promise.resolve(), [guide]);
-  const close = useCallback(() => guide?.close(), [guide]);
-  const reset = useCallback(() => guide?.reset(), [guide]);
+  const next = React.useCallback(() => guide?.next() ?? Promise.resolve(), [guide]);
+  const prev = React.useCallback(() => guide?.prev() ?? Promise.resolve(), [guide]);
+  const skip = React.useCallback(() => guide?.skip() ?? Promise.resolve(), [guide]);
+  const close = React.useCallback(() => guide?.close(), [guide]);
+  const reset = React.useCallback(() => guide?.reset(), [guide]);
 
   return {
     guide,
@@ -122,10 +142,10 @@ export function useGuide(options: UseGuideOptions): UseGuideReturn {
     skip,
     close,
     reset,
-    isActive: state.isActive,
-    isCompleted: state.isCompleted,
-    currentStep: state.currentStep,
-    totalSteps: state.totalSteps,
+    isActive: syncedState.isActive,
+    isCompleted: syncedState.isCompleted,
+    currentStep: syncedState.currentStep,
+    totalSteps: syncedState.totalSteps,
   };
 }
 

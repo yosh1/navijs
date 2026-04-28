@@ -1,6 +1,6 @@
 {
   "name": "@yoshihisak/navijs",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Framework-agnostic, type-safe in-app tour & onboarding library with Smart Locator.",
   "keywords": [
     "tour",
@@ -51,6 +51,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "bench:locator": "npm run build && node scripts/bench-locator.mjs",
     "demo": "vite examples",
     "demo:build": "vite build --config examples/vite.config.ts"
   },

@@ -2,6 +2,7 @@ import { NavijsError } from "./errors.js";
 import { EventEmitter } from "./events.js";
 import { locator as makeLocator } from "./locator/index.js";
 import type { Locator } from "./locator/types.js";
+import { subscribeToLocationChange } from "./navigation.js";
 import { Renderer } from "./renderer/index.js";
 import { emptyState, resolveStorage } from "./storage.js";
 import type {
@@ -26,11 +27,13 @@ export class Guide {
   private active = false;
   private waitingForUrl = false;
   private urlCleanup?: () => void;
+  private debug: false | "basic" | "verbose" = false;
 
   constructor(opts: CreateGuideOptions) {
     if (!opts.id) throw new NavijsError("INVALID_OPTION", "createGuide requires an id");
 
     this.opts = opts;
+    this.debug = opts.debug === "verbose" ? "verbose" : (opts.debug ? "basic" : false);
     this.id = opts.id;
     this.storage = resolveStorage(opts.storage);
     this.state = this.storage.get(opts.id) ?? emptyState(opts.id);
@@ -39,6 +42,8 @@ export class Guide {
       rootElement: opts.rootElement,
       zIndex: opts.zIndex ?? 9999,
       theme: opts.theme,
+      injectStyles: opts.injectStyles,
+      styleNonce: opts.styleNonce,
       closeOnEscape: opts.closeOnEscape ?? true,
       closeOnOverlayClick: opts.closeOnOverlayClick ?? false,
     });
@@ -78,6 +83,16 @@ export class Guide {
 
   getStepCount(): number {
     return this.steps.length;
+  }
+
+  /** A lightweight snapshot used by adapters (e.g. React). */
+  getSnapshot(): { isActive: boolean; isCompleted: boolean; currentStep: number; totalSteps: number } {
+    return {
+      isActive: this.isActive(),
+      isCompleted: this.isCompleted(),
+      currentStep: this.state.currentStep,
+      totalSteps: this.getStepCount(),
+    };
   }
 
   getCurrentStep(): Step | null {
@@ -209,11 +224,29 @@ export class Guide {
     if (!this.active) return;
 
     const loc = toLocator(step.target);
+    const t0 = this.debug ? now() : 0;
     let element: HTMLElement | null = null;
     try {
       element = await loc.waitFor(document);
     } catch {
       element = null;
+    }
+    if (this.debug) {
+      const dt = now() - t0;
+      // eslint-disable-next-line no-console
+      console.debug("[navijs] resolve step", {
+        guideId: this.id,
+        stepIndex: to,
+        stepId: step.id,
+        ms: Number(dt.toFixed(1)),
+        locator: loc.describe(),
+        found: !!element,
+      });
+
+      if (this.debug === "verbose") {
+        const diag = loc.diagnose?.(document);
+        if (diag) console.debug(diag);
+      }
     }
     if (!this.active) return;
 
@@ -264,31 +297,9 @@ export class Guide {
       }
     };
 
-    window.addEventListener("popstate", onChange);
-    window.addEventListener("hashchange", onChange);
-
-    // patch pushState/replaceState once so SPA navigations notify us.
-    const history = window.history;
-    const origPush = history.pushState.bind(history);
-    const origReplace = history.replaceState.bind(history);
-    history.pushState = function (...args) {
-      const r = origPush(...(args as Parameters<typeof history.pushState>));
-      window.dispatchEvent(new Event("navijs:locationchange"));
-      return r;
-    };
-    history.replaceState = function (...args) {
-      const r = origReplace(...(args as Parameters<typeof history.replaceState>));
-      window.dispatchEvent(new Event("navijs:locationchange"));
-      return r;
-    };
-    window.addEventListener("navijs:locationchange", onChange);
-
+    const unsubscribe = subscribeToLocationChange(onChange);
     this.urlCleanup = () => {
-      window.removeEventListener("popstate", onChange);
-      window.removeEventListener("hashchange", onChange);
-      window.removeEventListener("navijs:locationchange", onChange);
-      history.pushState = origPush;
-      history.replaceState = origReplace;
+      unsubscribe();
       this.waitingForUrl = false;
     };
   }
@@ -314,6 +325,12 @@ export class Guide {
 function toLocator(target: Step["target"]): Locator {
   if (typeof target === "string") return makeLocator().bySelector(target);
   return target;
+}
+
+function now(): number {
+  return typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
 }
 
 export function createGuide(opts: CreateGuideOptions): Guide {

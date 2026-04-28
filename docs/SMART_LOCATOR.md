@@ -31,6 +31,25 @@ const target = locator()
 
 戦略を積めば積むほど **特定が厳しく** なる。1つだけでも動く。
 
+## パフォーマンス（オプトイン最適化）
+
+AND 交差の性質上、先に候補を絞れる戦略（例: testId / selector / role）を適用してから、
+コストが高くなりがちな戦略（例: byText）を適用すると平均コストを下げられる。
+
+`optimize()` はこの順序を **オプトインで自動調整**する:
+
+```ts
+locator()
+  .byText("Submit")
+  .byRole("button")
+  .optimize(); // 内部では role → text の順などに並び替える
+```
+
+※複数候補が同点だった場合の「勝者」が変わる可能性があるため、デフォルトでは無効。
+
+また、最適化の一環として「すでに候補が絞れている場合」は `byText` を DOM 全体走査せず、
+候補要素の subtree のみ確認してコストを下げる（大きいDOMで効きやすい）。
+
 ## 評価アルゴリズム
 
 ```
@@ -61,7 +80,7 @@ return rank(candidates)[0]
 | `bySelector(s)` | `document.querySelectorAll(s)` |
 | `byXPath(x)` | `document.evaluate(...)` |
 | `fallback(loc)` | 上記が0件のとき切替 |
-| `timeout(ms)` | `MutationObserver` で `subtree:true, childList:true, attributes:true`。一致したら resolve。 |
+| `timeout(ms)` | `MutationObserver` で出現待ち。バースト更新は rAF で合流し、監視属性も絞り込み。一致したら resolve。 |
 
 ## 不可視要素の扱い
 
@@ -88,18 +107,19 @@ locator().bySelector(".btn-primary").skipShadow();
 
 XPath だけは shadow を貫通できない（`document.evaluate` の仕様上の制約）。テキスト・role・testid・selector の方がシャドウと相性が良い。
 
-## エラーメッセージ
+## エラーメッセージ（診断ログ）
 
-ターゲット未解決時のメッセージは debug に役立つよう詳細化:
+`waitFor()` がタイムアウトすると、例外メッセージに戦略ごとの候補数と実行時間を含める（どの条件で 0 になったかを追える）。
+
+`createGuide({ debug: "verbose" })` を有効にすると、成功時にも同様の診断ログを `console.debug` に出せる。
+
+例:
 
 ```
-[navijs] target not found after 5000ms
-  step: "step-create-invoice"
-  strategies tried (in order):
-    - byText("請求書を作成") → 0 candidates
-    - byRole("button") → 142 candidates
-    - byTestId("create-invoice") → 0 candidates
-  fallback chain: bySelector("#legacy-create") → 0 candidates
+[navijs] target not found after 5000ms — chain: byText("Submit") ∩ byRole("button")
+[navijs] locator diagnostics:
+  - byText("Submit"): matched=3, afterIntersect=3, time=1.2ms
+  - byRole("button"): matched=10, afterIntersect=1, time=0.4ms
 ```
 
 ## 将来拡張

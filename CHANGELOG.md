@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] — 2026-04-28
+
+### Added
+
+- CSP: `injectStyles` / `styleNonce` options for strict CSP environments.
+- Debugging: `debug: true | "verbose"` (per-step resolve timing; verbose includes locator diagnostics on success).
+- Smart Locator: `optimize()` opt-in strategy reordering to reduce average cost.
+- Tooling: `npm run bench:locator` script for quick locator performance checks.
+
+### Changed
+
+- Smart Locator: shadow root traversal work is reused across strategies; `.waitFor()` coalesces mutation bursts to avoid resolve storms.
+- Renderer: lighter DOM mutation tracking and rAF-coalesced re-positioning.
+
+### Fixed
+
+- Version constant: `src/index.ts` VERSION now matches `package.json`.
+
 ## [0.2.1] — 2026-04-28
 
 ### Fixed
@@ -83,6 +101,7 @@ First fully-featured release. Adds Shadow DOM piercing, four built-in theme pres
 
 Initial preview publish. Core Guide controller + Smart Locator (without Shadow DOM piercing), spotlight + tooltip renderer, React adapter, IIFE / CDN build. Superseded by 0.2.0 the same day.
 
-[Unreleased]: https://github.com/yosh1/navijs/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/yosh1/navijs/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/yosh1/navijs/compare/v0.2.1...v0.2.2
 [0.2.0]: https://github.com/yosh1/navijs/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/yosh1/navijs/releases/tag/v0.1.0

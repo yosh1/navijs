@@ -12,6 +12,9 @@ type CreateGuideOptions = {
   events?: Partial<GuideEvents>;
   rootElement?: HTMLElement;           // 描画ルート（既定 document.body）
   zIndex?: number;                     // 既定 9999
+  injectStyles?: boolean;              // 既定 true（<style> を注入）
+  styleNonce?: string;                 // CSP nonce（injectStyles=true のとき）
+  debug?: boolean | "verbose";         // 既定 false（console.debug を出す）
   closeOnEscape?: boolean;             // 既定 true
   closeOnOverlayClick?: boolean;       // 既定 false
 };
@@ -101,10 +104,12 @@ type Locator = {
   timeout(ms: number): Locator;
   includeHidden(): Locator;
   skipShadow(): Locator;          // 既定: open shadow root を貫通する
+  optimize(): Locator;            // オプトイン: 戦略順を自動最適化
 
   resolve(root?: ParentNode): HTMLElement | null;
   resolveAll(root?: ParentNode): HTMLElement[];
   waitFor(root?: ParentNode): Promise<HTMLElement>;
+  diagnose(root?: ParentNode): string | null;
 };
 ```
 

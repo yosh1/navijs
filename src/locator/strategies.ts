@@ -1,5 +1,9 @@
 import type { Strategy } from "./types.js";
 
+export interface QueryContext {
+  roots: ParentNode[];
+}
+
 const IMPLICIT_ROLE_TO_SELECTOR: Record<string, string> = {
   button: "button, input[type='button'], input[type='submit'], input[type='reset']",
   link: "a[href]",
@@ -37,31 +41,53 @@ export function runStrategy(
   strategy: Strategy,
   root: ParentNode,
   pierceShadow = true,
+  ctx?: QueryContext,
 ): HTMLElement[] {
   switch (strategy.kind) {
-    case "text":     return matchByText(root, strategy.value, strategy.options.exact ?? false, pierceShadow);
-    case "role":     return matchByRole(root, strategy.value, strategy.options.name, pierceShadow);
-    case "ariaLabel":return matchByAriaLabel(root, strategy.value, pierceShadow);
-    case "testId":   return matchByTestId(root, strategy.value, pierceShadow);
-    case "selector": return matchBySelector(root, strategy.value, pierceShadow);
+    case "text":     return matchByText(root, strategy.value, strategy.options.exact ?? false, pierceShadow, ctx);
+    case "role":     return matchByRole(root, strategy.value, strategy.options.name, pierceShadow, ctx);
+    case "ariaLabel":return matchByAriaLabel(root, strategy.value, pierceShadow, ctx);
+    case "testId":   return matchByTestId(root, strategy.value, pierceShadow, ctx);
+    case "selector": return matchBySelector(root, strategy.value, pierceShadow, ctx);
     case "xpath":    return matchByXPath(root, strategy.value); // XPath cannot pierce shadow boundaries
   }
+}
+
+export function createQueryContext(root: ParentNode, pierceShadow: boolean): QueryContext | undefined {
+  if (!pierceShadow) return undefined;
+  return { roots: collectRoots(root) };
+}
+
+function collectRoots(root: ParentNode): ParentNode[] {
+  const out: ParentNode[] = [root];
+  const seen = new Set<ParentNode>();
+  seen.add(root);
+
+  const walk = (r: ParentNode) => {
+    const all = r.querySelectorAll?.("*") ?? [];
+    for (const el of Array.from(all)) {
+      const sr = (el as Element).shadowRoot;
+      if (sr && !seen.has(sr)) {
+        seen.add(sr);
+        out.push(sr);
+        walk(sr);
+      }
+    }
+  };
+
+  walk(root);
+  return out;
 }
 
 /**
  * querySelectorAll that descends into open shadow roots.
  * O(n) over the live element tree plus each shadow tree.
  */
-function deepQueryAll<T extends Element>(root: ParentNode, selector: string): T[] {
+function deepQueryAll<T extends Element>(root: ParentNode, selector: string, ctx?: QueryContext): T[] {
+  const roots = ctx?.roots ?? collectRoots(root);
   const out: T[] = [];
-  for (const el of Array.from(root.querySelectorAll<T>(selector))) out.push(el);
-
-  // Walk every element once and recurse into shadow roots we find.
-  const all = root.querySelectorAll<Element>("*");
-  for (const el of Array.from(all)) {
-    if (el.shadowRoot) {
-      for (const m of deepQueryAll<T>(el.shadowRoot, selector)) out.push(m);
-    }
+  for (const r of roots) {
+    for (const el of Array.from(r.querySelectorAll<T>(selector))) out.push(el);
   }
   return out;
 }
@@ -77,6 +103,50 @@ export function describeStrategy(s: Strategy): string {
   }
 }
 
+export function elementMatchesText(
+  el: HTMLElement,
+  value: string | RegExp,
+  exact: boolean,
+  pierceShadow: boolean,
+): boolean {
+  // Fast path: includes descendant text in light DOM.
+  const text = (el.textContent ?? "").trim();
+  if (!exact && text && testText(text, value, false)) return true;
+
+  // Accurate path: check individual text nodes (needed for exact=true).
+  const doc = el.ownerDocument ?? document;
+  const walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+  let node = walker.nextNode();
+  while (node) {
+    const trimmed = (node.nodeValue ?? "").trim();
+    if (trimmed && testText(trimmed, value, exact)) return true;
+    node = walker.nextNode();
+  }
+
+  if (pierceShadow) {
+    const hosts = el.querySelectorAll<Element>("*");
+    for (const host of Array.from(hosts)) {
+      if (host.shadowRoot) {
+        if (shadowRootMatchesText(host.shadowRoot, value, exact)) return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+function shadowRootMatchesText(sr: ShadowRoot, value: string | RegExp, exact: boolean): boolean {
+  const doc = sr.ownerDocument ?? document;
+  const walker = doc.createTreeWalker(sr, NodeFilter.SHOW_TEXT, null);
+  let node = walker.nextNode();
+  while (node) {
+    const trimmed = (node.nodeValue ?? "").trim();
+    if (trimmed && testText(trimmed, value, exact)) return true;
+    node = walker.nextNode();
+  }
+  return false;
+}
+
 function stringifyMatcher(v: string | RegExp): string {
   return v instanceof RegExp ? v.toString() : JSON.stringify(v);
 }
@@ -88,9 +158,10 @@ function matchByText(
   value: string | RegExp,
   exact: boolean,
   pierceShadow: boolean,
+  ctx?: QueryContext,
 ): HTMLElement[] {
   const matches = new Set<HTMLElement>();
-  walkText(root, pierceShadow, (text, el) => {
+  walkText(root, pierceShadow, ctx, (text, el) => {
     if (testText(text, value, exact)) matches.add(promoteToInteractive(el));
   });
   return Array.from(matches);
@@ -99,26 +170,27 @@ function matchByText(
 function walkText(
   root: ParentNode,
   pierceShadow: boolean,
+  ctx: QueryContext | undefined,
   visit: (trimmed: string, parent: HTMLElement) => void,
 ): void {
-  const doc = (root as Node).ownerDocument ?? (root as Document);
-  const treeRoot = (root as Node).nodeType === 9 /* Document */
-    ? ((root as Document).body as Node)
-    : (root as Node);
-  if (!treeRoot) return;
+  const roots = pierceShadow
+    ? (ctx?.roots ?? collectRoots(root))
+    : [root];
 
-  const walker = doc.createTreeWalker(treeRoot, NodeFilter.SHOW_TEXT, null);
-  let node = walker.nextNode();
-  while (node) {
-    const trimmed = (node.nodeValue ?? "").trim();
-    const el = node.parentElement;
-    if (trimmed && el) visit(trimmed, el);
-    node = walker.nextNode();
-  }
-  if (pierceShadow) {
-    const els = (treeRoot as ParentNode).querySelectorAll<Element>("*");
-    for (const e of Array.from(els)) {
-      if (e.shadowRoot) walkText(e.shadowRoot, true, visit);
+  for (const r of roots) {
+    const doc = (r as Node).ownerDocument ?? (r as Document);
+    const treeRoot = (r as Node).nodeType === 9 /* Document */
+      ? ((r as Document).body as Node)
+      : (r as Node);
+    if (!treeRoot) continue;
+
+    const walker = doc.createTreeWalker(treeRoot, NodeFilter.SHOW_TEXT, null);
+    let node = walker.nextNode();
+    while (node) {
+      const trimmed = (node.nodeValue ?? "").trim();
+      const el = node.parentElement;
+      if (trimmed && el) visit(trimmed, el);
+      node = walker.nextNode();
     }
   }
 }
@@ -149,11 +221,12 @@ function matchByRole(
   role: string,
   name: string | RegExp | undefined,
   pierceShadow: boolean,
+  ctx?: QueryContext,
 ): HTMLElement[] {
-  const q = pierceShadow ? deepQueryAll : shallowQueryAll;
-  const explicit = q<HTMLElement>(root, `[role='${escapeAttr(role)}']`);
+  const q = pierceShadow ? (r: ParentNode, sel: string) => deepQueryAll<HTMLElement>(r, sel, ctx) : shallowQueryAll;
+  const explicit = q(root, `[role='${escapeAttr(role)}']`);
   const implicitSelector = IMPLICIT_ROLE_TO_SELECTOR[role];
-  const implicit = implicitSelector ? q<HTMLElement>(root, implicitSelector) : [];
+  const implicit = implicitSelector ? q(root, implicitSelector) : [];
   const all = uniq([...explicit, ...implicit]);
   if (!name) return all;
   return all.filter((el) => {
@@ -201,9 +274,10 @@ function matchByAriaLabel(
   root: ParentNode,
   value: string | RegExp,
   pierceShadow: boolean,
+  ctx?: QueryContext,
 ): HTMLElement[] {
-  const q = pierceShadow ? deepQueryAll : shallowQueryAll;
-  const all = q<HTMLElement>(root, "[aria-label], [aria-labelledby]");
+  const q = pierceShadow ? (r: ParentNode, sel: string) => deepQueryAll<HTMLElement>(r, sel, ctx) : shallowQueryAll;
+  const all = q(root, "[aria-label], [aria-labelledby]");
   return all.filter((el) => {
     const direct = el.getAttribute("aria-label");
     if (direct && testText(direct, value, false)) return true;
@@ -221,18 +295,18 @@ function matchByAriaLabel(
 
 // ---- byTestId -------------------------------------------------------------
 
-function matchByTestId(root: ParentNode, id: string, pierceShadow: boolean): HTMLElement[] {
+function matchByTestId(root: ParentNode, id: string, pierceShadow: boolean, ctx?: QueryContext): HTMLElement[] {
   const selectors = TEST_ID_ATTRS.map((a) => `[${a}='${escapeAttr(id)}']`).join(", ");
-  const q = pierceShadow ? deepQueryAll : shallowQueryAll;
-  return q<HTMLElement>(root, selectors);
+  const q = pierceShadow ? (r: ParentNode, sel: string) => deepQueryAll<HTMLElement>(r, sel, ctx) : shallowQueryAll;
+  return q(root, selectors);
 }
 
 // ---- bySelector / byXPath -------------------------------------------------
 
-function matchBySelector(root: ParentNode, selector: string, pierceShadow: boolean): HTMLElement[] {
+function matchBySelector(root: ParentNode, selector: string, pierceShadow: boolean, ctx?: QueryContext): HTMLElement[] {
   try {
-    const q = pierceShadow ? deepQueryAll : shallowQueryAll;
-    return q<HTMLElement>(root, selector);
+    const q = pierceShadow ? (r: ParentNode, sel: string) => deepQueryAll<HTMLElement>(r, sel, ctx) : shallowQueryAll;
+    return q(root, selector);
   } catch {
     return [];
   }

@@ -11,12 +11,13 @@ export const DEFAULT_THEME: NavijsTheme = {
 
 const STYLE_ID = "navijs-styles";
 
-export function ensureStyles(theme: NavijsTheme, zIndex: number): void {
+export function ensureStyles(theme: NavijsTheme, zIndex: number, opts: { nonce?: string } = {}): void {
   const doc = document;
   let style = doc.getElementById(STYLE_ID) as HTMLStyleElement | null;
   if (!style) {
     style = doc.createElement("style");
     style.id = STYLE_ID;
+    if (opts.nonce) style.nonce = opts.nonce;
     doc.head.appendChild(style);
   }
   style.textContent = buildCss(theme, zIndex);

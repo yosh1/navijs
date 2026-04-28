@@ -6,6 +6,8 @@ export interface RendererOptions {
   rootElement?: HTMLElement;
   zIndex?: number;
   theme?: Partial<NavijsTheme>;
+  injectStyles?: boolean;
+  styleNonce?: string;
   closeOnEscape?: boolean;
   closeOnOverlayClick?: boolean;
 }
@@ -14,6 +16,8 @@ interface ResolvedRendererOptions {
   rootElement: HTMLElement | null;
   zIndex: number;
   theme: NavijsTheme;
+  injectStyles: boolean;
+  styleNonce?: string;
   closeOnEscape: boolean;
   closeOnOverlayClick: boolean;
 }
@@ -62,12 +66,15 @@ export class Renderer {
   private state: MountedState | null = null;
   private boundOnKey?: (e: KeyboardEvent) => void;
   private boundReposition?: () => void;
+  private rafId: number | null = null;
 
   constructor(opts: RendererOptions = {}) {
     this.opts = {
       rootElement: opts.rootElement ?? null,
       zIndex: opts.zIndex ?? 9999,
       theme: { ...DEFAULT_THEME, ...(opts.theme ?? {}) },
+      injectStyles: opts.injectStyles ?? true,
+      styleNonce: opts.styleNonce,
       closeOnEscape: opts.closeOnEscape ?? true,
       closeOnOverlayClick: opts.closeOnOverlayClick ?? false,
     };
@@ -80,7 +87,9 @@ export class Renderer {
   mount(target: HTMLElement, step: ResolvedStep, callbacks: RendererCallbacks): void {
     const previousFocus = this.state?.previousFocus ?? document.activeElement;
     this.unmount({ restoreFocus: false });
-    ensureStyles(this.opts.theme, this.opts.zIndex);
+    if (this.opts.injectStyles) {
+      ensureStyles(this.opts.theme, this.opts.zIndex, { nonce: this.opts.styleNonce });
+    }
 
     const root = document.createElement("div");
     root.className = "navijs-root";
@@ -166,6 +175,10 @@ export class Renderer {
     s.resizeObserver?.disconnect();
     s.mutationObserver?.disconnect();
     s.root.remove();
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
 
     if (opts.restoreFocus !== false && s.previousFocus instanceof HTMLElement) {
       // Avoid stealing focus mid-step-transition. Only restore on real close.
@@ -203,11 +216,20 @@ export class Renderer {
     s.tooltip.dataset.placement = placement.placement;
   }
 
+  private schedulePosition(): void {
+    if (!this.state) return;
+    if (this.rafId !== null) return;
+    this.rafId = requestAnimationFrame(() => {
+      this.rafId = null;
+      this.position();
+    });
+  }
+
   private attachListeners(): void {
     const s = this.state;
     if (!s) return;
 
-    this.boundReposition = () => this.position();
+    this.boundReposition = () => this.schedulePosition();
     window.addEventListener("scroll", this.boundReposition, true);
     window.addEventListener("resize", this.boundReposition);
 
@@ -244,15 +266,21 @@ export class Renderer {
     window.addEventListener("keydown", this.boundOnKey);
 
     if (typeof ResizeObserver !== "undefined") {
-      s.resizeObserver = new ResizeObserver(() => this.position());
+      s.resizeObserver = new ResizeObserver(() => this.schedulePosition());
       s.resizeObserver.observe(s.target);
       s.resizeObserver.observe(s.tooltip);
     }
     if (typeof MutationObserver !== "undefined") {
-      s.mutationObserver = new MutationObserver(() => this.position());
+      s.mutationObserver = new MutationObserver(() => this.schedulePosition());
+
+      // 1) Cheap broad signal: DOM structure changes can move the target.
       s.mutationObserver.observe(document.body, {
         childList: true,
         subtree: true,
+      });
+
+      // 2) Narrow signal: class/style changes on the target itself.
+      s.mutationObserver.observe(s.target, {
         attributes: true,
         attributeFilter: ["style", "class"],
       });

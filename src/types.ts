@@ -98,6 +98,22 @@ export interface CreateGuideOptions {
   events?: Partial<GuideEvents>;
   rootElement?: HTMLElement;
   zIndex?: number;
+  /**
+   * Control how built-in CSS is injected.
+   * - true (default): inject <style id="navijs-styles"> with textContent
+   * - false: do not inject styles (bring your own CSS)
+   */
+  injectStyles?: boolean;
+  /**
+   * CSP nonce for the injected <style> tag. Useful when style-src requires nonce.
+   */
+  styleNonce?: string;
+  /**
+   * Opt-in debug logs (console.debug).
+   * - true: basic per-step resolve timing
+   * - "verbose": include locator strategy diagnostics even on success
+   */
+  debug?: boolean | "verbose";
   closeOnEscape?: boolean;
   closeOnOverlayClick?: boolean;
 }

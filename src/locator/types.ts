@@ -26,10 +26,22 @@ export interface Locator {
   includeHidden(): Locator;
   /** Disable shadow DOM piercing for this chain. Default: piercing is on. */
   skipShadow(): Locator;
+  /**
+   * Opt-in: let navijs reorder strategies to reduce average cost.
+   * This can improve performance on large DOMs but may change which element
+   * wins when multiple candidates tie, so it is disabled by default.
+   */
+  optimize(): Locator;
 
   resolve(root?: ParentNode): HTMLElement | null;
   resolveAll(root?: ParentNode): HTMLElement[];
   waitFor(root?: ParentNode): Promise<HTMLElement>;
+
+  /**
+   * Return a multi-line diagnostics string (candidate counts / timings) for the chain.
+   * Mostly intended for debugging.
+   */
+  diagnose(root?: ParentNode): string | null;
 
   /** @internal */
   describe(): string;

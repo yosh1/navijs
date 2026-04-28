@@ -204,6 +204,9 @@ export class Guide {
       try { await step.beforeShow({ step: resolved, element: null, guideId: this.id }); }
       catch (err) { console.error("[navijs] beforeShow threw:", err); }
     }
+    // close() may have fired during the await (e.g. React StrictMode cleanup);
+    // bailing here avoids mounting a renderer the guide will never unmount.
+    if (!this.active) return;
 
     const loc = toLocator(step.target);
     let element: HTMLElement | null = null;
@@ -212,6 +215,7 @@ export class Guide {
     } catch {
       element = null;
     }
+    if (!this.active) return;
 
     if (!element) {
       this.emitter.emit("targetNotFound", { step: resolved, locator: loc });

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-04-28
+
+### Fixed
+
+- Guide: bail out of `setIndex` after each `await` when the guide has been closed (e.g. React StrictMode dev double-invoke of `useEffect`). Previously the renderer could mount after `close()` resolved, leaving exactly one orphan overlay/tooltip in the DOM that no further `next()` / `close()` would clean up.
+
 ## [0.2.0] — 2026-04-27
 
 First fully-featured release. Adds Shadow DOM piercing, four built-in theme presets, full a11y polish (focus trap / live region / focus restore), `Step.render` for tooltip override, and the `useGuide` React hook.

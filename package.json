@@ -12,6 +12,14 @@
     "spotlight"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yosh1/navijs.git"
+  },
+  "homepage": "https://github.com/yosh1/navijs#readme",
+  "bugs": {
+    "url": "https://github.com/yosh1/navijs/issues"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

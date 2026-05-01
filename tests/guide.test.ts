@@ -109,6 +109,72 @@ describe("Guide — lifecycle", () => {
     expect(g.isCompleted()).toBe(false);
   });
 
+  it("skip closes the tour mid-way and does not advance to next step", async () => {
+    dom(`<button id="a">A</button><button id="b">B</button><button id="c">C</button>`);
+    const order: string[] = [];
+    const g = createGuide({
+      id: "lc-skip",
+      storage: "memory",
+      events: {
+        stepChange: (e) => order.push(`step:${e.to}`),
+        skip: () => order.push("skip"),
+        close: () => order.push("close"),
+        complete: () => order.push("complete"),
+      },
+    });
+    g.addStep({ target: "#a", body: "1" });
+    g.addStep({ target: "#b", body: "2" });
+    g.addStep({ target: "#c", body: "3" });
+
+    await g.start();
+    await g.next(); // now on step 1 (b)
+    await g.skip();
+
+    expect(order).toEqual(["step:0", "step:1", "skip", "close"]);
+    expect(g.isActive()).toBe(false);
+    expect(g.isCompleted()).toBe(false);
+  });
+
+  it("skip on the last step still closes (no extra advance attempt)", async () => {
+    dom(`<button id="a">A</button><button id="b">B</button>`);
+    const order: string[] = [];
+    const g = createGuide({
+      id: "lc-skip-last",
+      storage: "memory",
+      events: {
+        stepChange: (e) => order.push(`step:${e.to}`),
+        skip: () => order.push("skip"),
+        close: () => order.push("close"),
+      },
+    });
+    g.addStep({ target: "#a", body: "1" });
+    g.addStep({ target: "#b", body: "2" });
+
+    await g.start();
+    await g.next(); // last step
+    await g.skip();
+
+    expect(order).toEqual(["step:0", "step:1", "skip", "close"]);
+    expect(g.isActive()).toBe(false);
+  });
+
+  it("skip is a no-op when the guide isn't active", async () => {
+    dom(`<button id="a">A</button>`);
+    const onSkip = vi.fn();
+    const onClose = vi.fn();
+    const g = createGuide({
+      id: "lc-skip-inactive",
+      storage: "memory",
+      events: { skip: onSkip, close: onClose },
+    });
+    g.addStep({ target: "#a", body: "1" });
+
+    await g.skip();
+
+    expect(onSkip).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("getCurrentStep / isActive / getStepCount reflect runtime state", async () => {
     dom(`<button id="a">A</button>`);
     const g = createGuide({ id: "lc4", storage: "memory" });

@@ -63,6 +63,13 @@ export interface GuideEvents {
   start: (ctx: GuideContext) => void;
   stepChange: (ctx: { from: number; to: number; step: ResolvedStep }) => void;
   complete: (ctx: GuideContext) => void;
+  /**
+   * Fired when the user opts out of the tour via the Skip button. Always
+   * followed by a `close` event in the same tick — listen to `skip` if you
+   * need to distinguish a deliberate skip from other close paths (Escape,
+   * overlay click, programmatic `close()`).
+   */
+  skip: (ctx: GuideContext) => void;
   close: (ctx: GuideContext) => void;
   targetNotFound: (ctx: { step: ResolvedStep; locator: Locator }) => void;
 }

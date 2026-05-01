@@ -142,15 +142,9 @@ export class Guide {
   }
 
   async skip(): Promise<void> {
-    // Skip behaves like next() but emits close (user opted out).
     if (!this.active) return;
-    const from = this.state.currentStep;
-    const nextIndex = from + 1;
-    if (nextIndex >= this.steps.length) {
-      this.close();
-      return;
-    }
-    await this.setIndex(nextIndex, from);
+    this.emitter.emit("skip", this.context());
+    this.close();
   }
 
   close(): void {

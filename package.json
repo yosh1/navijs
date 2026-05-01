@@ -1,6 +1,6 @@
 {
   "name": "@yoshihisak/navijs",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Framework-agnostic, type-safe in-app tour & onboarding library with Smart Locator.",
   "keywords": [
     "tour",

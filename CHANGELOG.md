@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] — 2026-05-01
+
+### Fixed
+
+- Guide: `skip()` now closes the tour immediately instead of advancing to the next step. Previously, pressing the Skip button on any non-final step behaved identically to Next — the tour kept progressing instead of letting the user opt out. The fix calls `close()` after firing a new `skip` event.
+
+### Added
+
+- Events: new `skip` event on `GuideEvents`, fired when the user opts out via the Skip button. Always followed by a `close` event in the same tick — listen to `skip` if you need to distinguish a deliberate skip from other close paths (Escape, overlay click, programmatic `close()`).
+
 ## [0.2.2] — 2026-04-28
 
 ### Added
@@ -101,7 +111,8 @@ First fully-featured release. Adds Shadow DOM piercing, four built-in theme pres
 
 Initial preview publish. Core Guide controller + Smart Locator (without Shadow DOM piercing), spotlight + tooltip renderer, React adapter, IIFE / CDN build. Superseded by 0.2.0 the same day.
 
-[Unreleased]: https://github.com/yosh1/navijs/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/yosh1/navijs/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/yosh1/navijs/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/yosh1/navijs/compare/v0.2.1...v0.2.2
 [0.2.0]: https://github.com/yosh1/navijs/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/yosh1/navijs/releases/tag/v0.1.0

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] — 2026-05-28
+
+### Fixed
+
+- React: `useGuide` no longer crashes the host component. The hook called `useSyncExternalStore` conditionally on the `guide` state — which is `null` on the first render and non-null after the mount effect — so the number of hooks changed between renders, violating the Rules of Hooks. This threw `TypeError: Cannot read properties of undefined (reading 'length')` inside React's `areHookInputsEqual` on the second render under React 17, 18 and 19, making the adapter unusable. Reactive state is now mirrored from the guide via `useState` + event subscription with no conditional hooks.
+
 ## [0.2.3] — 2026-05-01
 
 ### Fixed
@@ -111,7 +117,8 @@ First fully-featured release. Adds Shadow DOM piercing, four built-in theme pres
 
 Initial preview publish. Core Guide controller + Smart Locator (without Shadow DOM piercing), spotlight + tooltip renderer, React adapter, IIFE / CDN build. Superseded by 0.2.0 the same day.
 
-[Unreleased]: https://github.com/yosh1/navijs/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/yosh1/navijs/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/yosh1/navijs/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/yosh1/navijs/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/yosh1/navijs/compare/v0.2.1...v0.2.2
 [0.2.0]: https://github.com/yosh1/navijs/compare/v0.1.0...v0.2.0

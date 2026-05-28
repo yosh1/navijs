@@ -64,33 +64,24 @@ export function useGuide(options: UseGuideOptions): UseGuideReturn {
     setGuide(g);
     setState(g.getSnapshot());
 
-    const offStart = g.on("start", (ctx) =>
-      setState((s) => ({
-        ...s,
-        isActive: true,
-        currentStep: ctx.currentIndex,
-        totalSteps: ctx.totalSteps,
-      })),
-    );
-    const offStep = g.on("stepChange", ({ to, step }) =>
-      setState((s) => ({ ...s, currentStep: to, totalSteps: step.total })),
-    );
-    const offComplete = g.on("complete", () =>
-      setState((s) => ({ ...s, isActive: false, isCompleted: true })),
-    );
-    const offClose = g.on("close", () =>
-      setState((s) => ({ ...s, isActive: false })),
-    );
+    // Mirror the guide's state into React state on every lifecycle event.
+    // We read the full snapshot rather than patching fields so the mirror can
+    // never drift from the controller's actual state.
+    const sync = () => setState(g.getSnapshot());
+    const offs = [
+      g.on("start", sync),
+      g.on("stepChange", sync),
+      g.on("complete", sync),
+      g.on("close", sync),
+      g.on("targetNotFound", sync),
+    ];
 
     if (autoStart && !g.isCompleted()) {
       void g.start();
     }
 
     return () => {
-      offStart();
-      offStep();
-      offComplete();
-      offClose();
+      for (const off of offs) off();
       g.close();
     };
     // We deliberately key the effect on `id` only — the guide is a long-lived
@@ -98,31 +89,6 @@ export function useGuide(options: UseGuideOptions): UseGuideReturn {
     // tear down the renderer. Other options are read at construction time.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
-
-  // Prefer React 18+ external store sync when available.
-  const useSyncExternalStore = (React as any).useSyncExternalStore as
-    | undefined
-    | ((subscribe: (onStoreChange: () => void) => () => void, getSnapshot: () => ReactiveState) => ReactiveState);
-
-  const syncedState = useSyncExternalStore && guide
-    ? useSyncExternalStore(
-      (onStoreChange) => {
-        const offStart = guide.on("start", onStoreChange);
-        const offStep = guide.on("stepChange", onStoreChange);
-        const offComplete = guide.on("complete", onStoreChange);
-        const offClose = guide.on("close", onStoreChange);
-        const offNotFound = guide.on("targetNotFound", onStoreChange);
-        return () => {
-          offStart();
-          offStep();
-          offComplete();
-          offClose();
-          offNotFound();
-        };
-      },
-      () => guide.getSnapshot(),
-    )
-    : state;
 
   const start = React.useCallback(
     (o?: { from?: number | string }) => guide?.start(o) ?? Promise.resolve(),
@@ -142,10 +108,10 @@ export function useGuide(options: UseGuideOptions): UseGuideReturn {
     skip,
     close,
     reset,
-    isActive: syncedState.isActive,
-    isCompleted: syncedState.isCompleted,
-    currentStep: syncedState.currentStep,
-    totalSteps: syncedState.totalSteps,
+    isActive: state.isActive,
+    isCompleted: state.isCompleted,
+    currentStep: state.currentStep,
+    totalSteps: state.totalSteps,
   };
 }
 

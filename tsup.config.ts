@@ -1,9 +1,9 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig([
-  // ESM + CJS for npm consumers (core + react adapter).
+  // ESM + CJS for npm consumers (core + framework adapters).
   {
-    entry: ["src/index.ts", "src/react.ts"],
+    entry: ["src/index.ts", "src/react.ts", "src/vue.ts"],
     format: ["esm", "cjs"],
     dts: true,
     sourcemap: true,
@@ -11,7 +11,7 @@ export default defineConfig([
     minify: false,
     target: "es2020",
     treeshake: true,
-    external: ["react"],
+    external: ["react", "vue"],
   },
   // IIFE build for direct <script> / CDN usage. Core only — React adapter
   // doesn't make sense as a UMD global. Exposes window.navijs.

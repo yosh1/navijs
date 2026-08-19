@@ -116,6 +116,51 @@ function App() {
 `isActive / currentStep / totalSteps / isCompleted` の reactive state を返す。
 ガイドインスタンスは `id` が変わらない限り再生成されないので、進捗が保持される。
 
+## Vue
+
+```vue
+<script setup lang="ts">
+import { useGuide, locator } from "@yoshihisak/navijs/vue";
+
+const tour = useGuide({
+  id: "first-run",
+  define: (g) => {
+    g.addStep({
+      target: locator().byTestId("nav-home"),
+      title: "ホーム",
+      body: "ここからダッシュボードへ。",
+    });
+    g.addStep({
+      target: locator().byRole("button", { name: /create/i }),
+      body: "新規作成はここから。",
+    });
+  },
+});
+</script>
+
+<template>
+  <button :disabled="tour.isActive.value" @click="tour.start()">
+    Start tour ({{ tour.currentStep.value + 1 }} / {{ tour.totalSteps.value || "?" }})
+  </button>
+</template>
+```
+
+React 版と同じ API だが、状態は `ComputedRef` として返る（`<template>` 内では
+自動アンラップされるので `.value` は不要）。`guide` は `shallowRef` — Guide は
+リアクティブなデータではなくコントローラなので、内部まで追跡しない。
+
+`id` には ref や getter も渡せる。値が変わると古いガイドを閉じてから新しい
+ガイドを構築するので、コンポーネントを再マウントせずにツアーを差し替えられる。
+
+```ts
+const tourId = ref("onboarding-free");
+const tour = useGuide({ id: tourId, define: (g) => { /* ... */ } });
+tourId.value = "onboarding-pro"; // 旧ガイドは close されて作り直される
+```
+
+ガイドはコンポーネントの effect scope が破棄されるタイミングで自動的に片付く。
+SSR 中は `guide` が `null` のままで、DOM に触るのはクライアントに入ってから。
+
 ## Why Smart Locator
 
 CSS selectors break when class names get hashed. XPath breaks when JSX inserts a `<Fragment>` somewhere. `data-testid` may be tree-shaken in production. **navijs** lets you stack multiple signals:

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Vue adapter (`@yoshihisak/navijs/vue`), closing the v0.4 milestone in `docs/REQUIREMENTS.md`. `useGuide` mirrors the React adapter's surface as a composable: the same `start / next / prev / skip / close / reset` callbacks, with `isActive / isCompleted / currentStep / totalSteps` returned as `ComputedRef`s and the guide itself as a `shallowRef`. The guide is created lazily (never during SSR), torn down on effect-scope disposal, and `id` accepts a ref or getter so a tour can be swapped without remounting the component.
+
+### Changed
+
+- `vue` is declared as an optional peer dependency alongside `react`, so neither framework is pulled in by installing navijs.
+- Keywords now include `vue`, `react`, `product-tour`, `user-onboarding`, `framework-agnostic` and `typescript` for npm search.
+
 ## [0.2.4] — 2026-05-28
 
 ### Fixed

@@ -205,15 +205,15 @@ guide.close();      // ガイド終了（未完了扱い）
 
 ## 6. 拡張ロードマップ
 
-| バージョン | 内容 |
-| --- | --- |
-| **v0.1 (MVP)** | 本要件の MUST を満たす |
-| v0.2 | テーマ／ダーク自動／a11y 強化 |
-| v0.3 | React wrapper (`@navijs/react`) |
-| v0.4 | Vue wrapper (`@navijs/vue`) |
-| v0.5 | Script タグ版（CDN UMD） |
-| v0.6 | 操作ログ収集（pluggable transport） |
-| v1.0 | ノーコード編集 SaaS、AI 自動生成 |
+| バージョン | 内容 | 状況 |
+| --- | --- | --- |
+| **v0.1 (MVP)** | 本要件の MUST を満たす | ✅ |
+| v0.2 | テーマ／ダーク自動／a11y 強化 | ✅ |
+| v0.3 | React wrapper (`@yoshihisak/navijs/react`) | ✅ |
+| v0.4 | Vue wrapper (`@yoshihisak/navijs/vue`) | ✅ |
+| v0.5 | Script タグ版（CDN UMD） | ✅ |
+| v0.6 | 操作ログ収集（pluggable transport） | 未着手 |
+| v1.0 | ノーコード編集 SaaS、AI 自動生成 | 未着手 |
 
 ---
 
